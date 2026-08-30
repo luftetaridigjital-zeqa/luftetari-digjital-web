@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { ChallengeExperience } from "../../components/challenge-experience";
 
 export const metadata: Metadata = {
-  title: "21-Day Challenge | Luftetari Digjital",
-  description: "Hyrja zyrtare në Luftetari Digjital 21-Day Challenge.",
+  title: "Sfida 21-Ditore | Luftetari Digjital",
+  description: "Inicimi zyrtar në Sfidën 21-Ditore të Luftetari Digjital.",
   robots: {
     index: false,
     follow: false,

@@ -10,55 +10,52 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function reachRedeem() {
+  fireEvent.click(screen.getByRole("button", { name: /nis inicimin/i }));
+  fireEvent.change(screen.getByLabelText(/^emri$/i), {
+    target: { value: "Zeqir" },
+  });
+  fireEvent.change(screen.getByLabelText(/mbiemri/i), {
+    target: { value: "Cara" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: /vazhdo/i }));
+}
+
 describe("ChallengeExperience", () => {
-  it("collects identity and personalizes the redeem scene", () => {
+  it("mbledh identitetin dhe personalizon portën e aksesit", () => {
     render(<ChallengeExperience />);
+    reachRedeem();
 
-    fireEvent.click(screen.getByRole("button", { name: /begin initiation/i }));
-    fireEvent.click(screen.getByRole("button", { name: /enter silently/i }));
-
-    fireEvent.change(screen.getByLabelText(/first name/i), {
-      target: { value: "Zeqir" },
-    });
-    fireEvent.change(screen.getByLabelText(/last name/i), {
-      target: { value: "Cara" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    expect(screen.getByText(/Zeqir, your initiation begins now/i)).toBeInTheDocument();
-    expect(screen.getByText(/the gate is locked/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zeqir, inicimi yt fillon tani/i)).toBeInTheDocument();
+    expect(screen.getByText(/aksesi yt është i kufizuar/i)).toBeInTheDocument();
   });
 
-  it("keeps a wrong code recoverable and accepts LD2026", () => {
+  it("e mban kodin e gabuar të rikuperueshëm dhe nis muzikën pas LD2026", () => {
     vi.useFakeTimers();
     render(<ChallengeExperience />);
+    reachRedeem();
 
-    fireEvent.click(screen.getByRole("button", { name: /begin initiation/i }));
-    fireEvent.click(screen.getByRole("button", { name: /enter silently/i }));
-    fireEvent.change(screen.getByLabelText(/first name/i), {
-      target: { value: "Zeqir" },
-    });
-    fireEvent.change(screen.getByLabelText(/last name/i), {
-      target: { value: "Cara" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    const code = screen.getByLabelText(/redeem code/i);
+    const code = screen.getByLabelText(/kodi i aksesit/i);
     fireEvent.change(code, { target: { value: "BAD001" } });
-    fireEvent.click(screen.getByRole("button", { name: /unlock/i }));
-    expect(screen.getByText(/code did not unlock the chest/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /hap portën/i }));
+    expect(screen.getByText(/kodi nuk e hapi portën/i)).toBeInTheDocument();
+    expect(screen.queryByTitle(/muzika e inicimit/i)).not.toBeInTheDocument();
 
     fireEvent.change(code, { target: { value: "LD2026" } });
-    fireEvent.click(screen.getByRole("button", { name: /unlock/i }));
+    fireEvent.click(screen.getByRole("button", { name: /hap portën/i }));
     expect(screen.getByTestId("challenge-experience")).toHaveAttribute(
       "data-phase",
       "recognition",
+    );
+    expect(screen.getByTitle(/muzika e inicimit/i)).toHaveAttribute(
+      "src",
+      expect.stringContaining("kjlu9RRHcbE"),
     );
 
     for (let index = 0; index < 6; index += 1) {
       act(() => vi.advanceTimersByTime(1800));
     }
 
-    expect(screen.getByText(/every warrior starts somewhere/i)).toBeInTheDocument();
+    expect(screen.getByText(/çdo luftetar nis diku/i)).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import {
-  useCallback,
   useEffect,
   useReducer,
   useRef,
@@ -14,12 +14,14 @@ import {
   createMemberId,
   normalizeRedeemCode,
   type ChallengeAction,
+  type ChallengePhase,
   type ChallengeState,
 } from "../lib/challenge-machine";
 import styles from "./challenge-experience.module.css";
 
-const STORAGE_KEY = "ld-21-day-initiation-v1";
-const unlockPhases = new Set([
+const STORAGE_KEY = "ld-21-day-initiation-v2";
+const MUSIC_VIDEO_ID = "kjlu9RRHcbE";
+const unlockPhases = new Set<ChallengePhase>([
   "recognition",
   "key-activation",
   "unlock",
@@ -29,79 +31,130 @@ const unlockPhases = new Set([
 ]);
 
 const mentorChapters = [
-  ["CHAPTER 01", "THE BEGINNING"],
-  ["CHAPTER 02", "THE STRUGGLE"],
-  ["CHAPTER 03", "THE REALIZATION"],
-  ["CHAPTER 04", "THE DISCIPLINE"],
-  ["CHAPTER 05", "THE MISSION"],
-  ["CHAPTER 06", "LUFTETARI DIGJITAL"],
+  ["KAPITULLI 01", "FILLIMI"],
+  ["KAPITULLI 02", "PËRBALLJA"],
+  ["KAPITULLI 03", "KUPTIMI"],
+  ["KAPITULLI 04", "DISIPLINA"],
+  ["KAPITULLI 05", "MISIONI"],
+  ["KAPITULLI 06", "LUFTETARI DIGJITAL"],
 ] as const;
 
 const readinessQuestions = [
-  "Are you ready to be tested?",
-  "Are you ready to continue even when you don't feel like it?",
-  "Are you ready to take responsibility for the next 21 days?",
-  "Are you ready to give these 21 days everything you have?",
+  "A je gati të testohesh?",
+  "A je gati të vazhdosh edhe kur nuk ke vullnet?",
+  "A je gati të marrësh përgjegjësi për 21 ditët e ardhshme?",
+  "A je gati t'u japësh këtyre 21 ditëve gjithçka që ke?",
 ];
 
 const commitmentLines = [
-  "I understand that these 21 days will challenge my discipline, my energy, my focus and the standards I hold for myself.",
-  "I will not quit simply because something becomes difficult.",
-  "I will not allow temporary emotions to decide what I do.",
-  "When I don't feel like continuing, I will remember why I started.",
-  "When I face resistance, I will move forward.",
-  "When I fail, I will take responsibility, learn and continue.",
-  "I will respect my body.",
-  "I will strengthen my mind.",
-  "I will protect my spirit.",
-  "I will work toward my mission.",
-  "I understand that nobody can transform my life for me. The responsibility is mine.",
-  "For the next 21 days, I commit to showing myself what I am capable of.",
-  "I am not signing this promise for Luftetari Digjital. I am signing it for myself.",
+  "E kuptoj se këto 21 ditë do ta sfidojnë disiplinën, energjinë, fokusin dhe standardin që kërkoj nga vetja.",
+  "Nuk do të dorëzohem vetëm sepse diçka bëhet e vështirë.",
+  "Nuk do t'i lejoj emocionet e përkohshme të vendosin se çfarë bëj.",
+  "Kur të mos kem vullnet të vazhdoj, do të kujtoj pse e nisa.",
+  "Kur të përballem me rezistencë, do të lëviz përpara.",
+  "Kur të dështoj, do të marr përgjegjësi, do të mësoj dhe do të vazhdoj.",
+  "Do ta respektoj trupin tim.",
+  "Do ta forcoj mendjen time.",
+  "Do ta mbroj shpirtin tim.",
+  "Do të punoj drejt misionit tim.",
+  "E kuptoj se askush nuk mund ta transformojë jetën time për mua. Përgjegjësia është e imja.",
+  "Për 21 ditët e ardhshme angazhohem t'ia dëshmoj vetes se për çfarë jam i aftë.",
+  "Këtë zotim nuk po e nënshkruaj për Luftetari Digjital. Po e nënshkruaj për veten.",
 ];
+
+const phaseCopy: Partial<Record<ChallengePhase, string>> = {
+  identity: "IDENTITETI",
+  redeem: "AKSESI",
+  recognition: "KODI U NJOH",
+  "key-activation": "ÇELËSI U AKTIVIZUA",
+  unlock: "PORTA PO HAPET",
+  "chest-reaction": "SISTEMI PO PËRGJIGJET",
+  opening: "AKSESI U ZHBLLOKUA",
+  light: "KALIMI U KONFIRMUA",
+  mentor: "RRUGËTIMI I MENTORIT",
+  rule: "RREGULLI I LD-SË",
+  readiness: "TESTI I GATISHMËRISË",
+  "final-readiness": "VENDIMI",
+  commitment: "ZOTIMI 21-DITOR",
+  signature: "NËNSHKRIMI",
+  seal: "VULA DIGJITALE",
+  member: "IDENTITETI I ANËTARIT",
+  "day-zero": "DITA 0 / 21",
+  "day-one": "DITA 1",
+};
 
 function reducer(state: ChallengeState, action: ChallengeAction) {
   return advanceChallenge(state, action);
 }
 
-function useAmbientSound(enabled: boolean) {
-  const contextRef = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
+function BackgroundMusic({ enabled }: { enabled: boolean }) {
+  const playerRef = useRef<HTMLIFrameElement>(null);
 
-  const stop = useCallback(() => {
-    if (gainRef.current) gainRef.current.gain.setTargetAtTime(0, 0, 0.18);
-  }, []);
+  const command = (func: string, args: number[] = []) => {
+    playerRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func, args }),
+      "https://www.youtube.com",
+    );
+  };
 
   useEffect(() => {
-    if (!enabled) {
-      stop();
-      return;
-    }
-    if (typeof window === "undefined" || !("AudioContext" in window)) return;
+    if (!enabled) return;
+    const first = window.setTimeout(() => {
+      command("setVolume", [100]);
+      command("playVideo");
+    }, 350);
+    const second = window.setTimeout(() => {
+      command("setVolume", [100]);
+      command("playVideo");
+    }, 1400);
+    return () => {
+      window.clearTimeout(first);
+      window.clearTimeout(second);
+    };
+  }, [enabled]);
 
-    if (!contextRef.current) {
-      const context = new AudioContext();
-      const gain = context.createGain();
-      const low = context.createOscillator();
-      const high = context.createOscillator();
-      low.type = "sine";
-      high.type = "sine";
-      low.frequency.value = 54;
-      high.frequency.value = 108;
-      gain.gain.value = 0;
-      low.connect(gain);
-      high.connect(gain);
-      gain.connect(context.destination);
-      low.start();
-      high.start();
-      contextRef.current = context;
-      gainRef.current = gain;
-    }
+  if (!enabled) return null;
 
-    void contextRef.current.resume();
-    gainRef.current?.gain.setTargetAtTime(0.018, 0, 1.4);
-    return stop;
-  }, [enabled, stop]);
+  return (
+    <iframe
+      ref={playerRef}
+      className={styles.musicPlayer}
+      title="Muzika e inicimit"
+      src={`https://www.youtube.com/embed/${MUSIC_VIDEO_ID}?autoplay=1&loop=1&playlist=${MUSIC_VIDEO_ID}&controls=0&disablekb=1&enablejsapi=1&playsinline=1&rel=0`}
+      allow="autoplay; encrypted-media"
+      onLoad={() => {
+        command("setVolume", [100]);
+        command("playVideo");
+      }}
+      tabIndex={-1}
+    />
+  );
+}
+
+function BrandHeader({ phase }: { phase: ChallengePhase }) {
+  return (
+    <header className={styles.brandHeader}>
+      <div className={styles.brandLockup}>
+        <Image src="/ld-logo.png" alt="Logoja Luftetari Digjital" width={54} height={54} priority />
+        <div><strong>LUFTETARI</strong><span>DIGJITAL</span></div>
+      </div>
+      <div className={styles.headerMeta}>
+        <span>SFIDA 21-DITORE</span>
+        <b>{phaseCopy[phase] ?? "INICIMI"}</b>
+      </div>
+    </header>
+  );
+}
+
+function PillarRail() {
+  return (
+    <div className={styles.pillarRail} aria-label="Katër shtyllat e Luftetari Digjital">
+      <span data-pillar="mendja">MENDJA</span>
+      <span data-pillar="trupi">TRUPI</span>
+      <span data-pillar="shpirti">SHPIRTI</span>
+      <span data-pillar="misioni">MISIONI</span>
+    </div>
+  );
 }
 
 function SceneFrame({
@@ -136,8 +189,6 @@ export function ChallengeExperience() {
   const signatureRef = useRef<SVGSVGElement>(null);
   const storageReadyRef = useRef(false);
 
-  useAmbientSound(state.soundEnabled);
-
   useEffect(() => {
     if (process.env.NODE_ENV === "test") return;
     queueMicrotask(() => {
@@ -145,7 +196,13 @@ export function ChallengeExperience() {
         const saved = localStorage.getItem(STORAGE_KEY);
         const parsed = saved ? (JSON.parse(saved) as ChallengeState) : null;
         if (parsed?.phase && parsed.member) {
-          dispatch({ type: "RESTORE", state: parsed });
+          dispatch({
+            type: "RESTORE",
+            state: {
+              ...parsed,
+              soundEnabled: Boolean(parsed.redeemCodeValidated),
+            },
+          });
         }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
@@ -226,278 +283,202 @@ export function ChallengeExperience() {
     if (signaturePath.includes(" L ")) dispatch({ type: "CREATE_SIGNATURE" });
   };
 
-  const phaseLabel = state.phase.replaceAll("-", " ");
-
   return (
     <main
       className={`${styles.experience} ${styles[`phase_${state.phase}`] ?? ""}`}
       data-phase={state.phase}
       data-testid="challenge-experience"
     >
-      <div className={styles.sky} aria-hidden="true" />
-      <div className={`${styles.mountain} ${styles.mountainBack}`} aria-hidden="true" />
-      <div className={`${styles.mountain} ${styles.mountainMid}`} aria-hidden="true" />
-      <div className={`${styles.mountain} ${styles.mountainFront}`} aria-hidden="true" />
-      <div className={styles.fog} aria-hidden="true" />
+      <div className={styles.grid} aria-hidden="true" />
+      <div className={styles.glow} aria-hidden="true" />
       <div className={styles.grain} aria-hidden="true" />
-
-      {state.phase !== "arrival" && state.phase !== "sound" && (
-        <div className={styles.hud}>
-          <span>LD · 21</span>
-          <span>{phaseLabel}</span>
-          <button
-            className={styles.soundToggle}
-            onClick={() => dispatch({ type: "TOGGLE_SOUND" })}
-            type="button"
-          >
-            Sound {state.soundEnabled ? "ON" : "OFF"}
-          </button>
-        </div>
-      )}
+      <BackgroundMusic enabled={state.soundEnabled} />
+      <BrandHeader phase={state.phase} />
 
       {state.phase === "arrival" && (
-        <SceneFrame eyebrow="LUFTETARI DIGJITAL · 21-DAY CHALLENGE">
-          <p className={styles.kicker}>THE INITIATION</p>
-          <h1 className={styles.displayTitle}>You are not here to consume.</h1>
-          <p className={styles.lead}>For the next 21 days, you are here to be tested.</p>
-          <p className={styles.prompt}>Are you ready to become a Luftetar Digjital?</p>
-          <button className={styles.primary} onClick={() => dispatch({ type: "BEGIN" })}>
-            BEGIN INITIATION
-          </button>
-        </SceneFrame>
-      )}
-
-      {state.phase === "sound" && (
-        <SceneFrame eyebrow="ENTRY PROTOCOL" title="How do you want to enter?">
-          <p className={styles.lead}>Sound supports the atmosphere. Silence remains a complete path.</p>
-          <div className={styles.actions}>
-            <button
-              className={styles.primary}
-              onClick={() => dispatch({ type: "CHOOSE_SOUND", enabled: true })}
-            >
-              ENTER WITH SOUND
-            </button>
-            <button
-              className={styles.secondary}
-              onClick={() => dispatch({ type: "CHOOSE_SOUND", enabled: false })}
-            >
-              ENTER SILENTLY
-            </button>
+        <SceneFrame eyebrow="PROGRAMI I TRANSFORMIMIT · 21 DITË" className={styles.arrivalScene}>
+          <div className={styles.heroLogo}>
+            <Image src="/ld-logo.png" alt="Luftetari Digjital" width={150} height={150} priority />
           </div>
+          <p className={styles.kicker}>INICIMI</p>
+          <h1 className={styles.displayTitle}>21 ditët e ardhshme nuk janë për konsum.</h1>
+          <p className={styles.lead}>Janë për disiplinë, veprim dhe standard më të lartë.</p>
+          <div className={styles.statusPanel}>
+            <span>STATUSI I HYRJES</span><strong>GATI PËR INICIM</strong><i />
+          </div>
+          <button className={styles.primary} onClick={() => dispatch({ type: "BEGIN" })}>
+            NIS INICIMIN <span>→</span>
+          </button>
         </SceneFrame>
       )}
 
       {state.phase === "identity" && (
-        <SceneFrame eyebrow="IDENTITY · 01" title="Before we begin...">
-          <p className={styles.lead}>Tell us who is entering.</p>
+        <SceneFrame eyebrow="HAPI 01 · IDENTITETI" title="Para se të fillojmë...">
+          <p className={styles.lead}>Na trego kush po hyn në sfidë.</p>
           <form className={styles.form} onSubmit={submitIdentity}>
-            <label>
-              FIRST NAME
-              <input name="firstName" required autoComplete="given-name" />
-            </label>
-            <label>
-              LAST NAME
-              <input name="lastName" required autoComplete="family-name" />
-            </label>
-            <button className={styles.primary} type="submit">CONTINUE</button>
+            <label>EMRI<input name="firstName" required autoComplete="given-name" placeholder="Shkruaj emrin" /></label>
+            <label>MBIEMRI<input name="lastName" required autoComplete="family-name" placeholder="Shkruaj mbiemrin" /></label>
+            <button className={styles.primary} type="submit">VAZHDO <span>→</span></button>
           </form>
         </SceneFrame>
       )}
 
       {state.phase === "redeem" && (
-        <SceneFrame eyebrow="ACCESS · 02" title="The gate is locked.">
-          <p className={styles.personal}>{state.member.firstName}, your initiation begins now.</p>
-          <div className={styles.artifactStage} aria-hidden="true">
-            <div className={styles.key}><i /><b /></div>
-            <div className={styles.vault}><span /></div>
-          </div>
-          <p className={styles.lead}>Enter the code you received to unlock your journey.</p>
+        <SceneFrame eyebrow="HAPI 02 · AKSESI" title="Aksesi yt është i kufizuar.">
+          <p className={styles.personal}>{state.member.firstName}, inicimi yt fillon tani.</p>
+          <div className={styles.lockCore} aria-hidden="true"><span>⌑</span><i /><b /></div>
+          <p className={styles.lead}>Vendos kodin unik që ke pranuar për ta hapur portën.</p>
           <form className={styles.codeForm} onSubmit={submitCode}>
-            <label className={styles.srOnly} htmlFor="redeem-code">Redeem code</label>
+            <label className={styles.srOnly} htmlFor="redeem-code">Kodi i aksesit</label>
             <input
               id="redeem-code"
               className={styles.codeInput}
               value={code}
               onChange={(event) => setCode(normalizeRedeemCode(event.target.value).slice(0, 6))}
               maxLength={6}
-              inputMode="text"
               autoComplete="one-time-code"
-              placeholder="______"
+              placeholder="VENDOS KODIN"
             />
-            <button className={styles.primary} disabled={code.length !== 6} type="submit">UNLOCK</button>
+            <button className={styles.primary} disabled={code.length !== 6} type="submit">HAP PORTËN <span>→</span></button>
           </form>
           {state.feedback && <p className={styles.feedback} role="status">{state.feedback}</p>}
         </SceneFrame>
       )}
 
       {unlockPhases.has(state.phase) && (
-        <SceneFrame eyebrow="ACCESS RECOGNIZED" className={styles.unlockScene}>
-          <div className={styles.unlockArtifact} aria-hidden="true">
-            <div className={styles.key}><i /><b /></div>
-            <div className={styles.vault}><span /></div>
-            <div className={styles.unlockLight} />
+        <SceneFrame eyebrow="AKSESI U VERIFIKUA" className={styles.unlockScene}>
+          <div className={styles.accessCore} aria-hidden="true">
+            <Image src="/ld-logo.png" alt="" width={132} height={132} />
+            <div className={styles.coreRing} /><div className={styles.coreSweep} />
           </div>
-          <p className={styles.sequenceLabel}>{phaseLabel}</p>
+          <p className={styles.sequenceLabel}>{phaseCopy[state.phase]}</p>
           <p className={styles.codeGlow}>LD2026</p>
+          <div className={styles.unlockProgress}><i /></div>
         </SceneFrame>
       )}
 
       {state.phase === "mentor" && (
         <SceneFrame eyebrow={mentorChapters[mentorChapter][0]} title={mentorChapters[mentorChapter][1]}>
-          <p className={styles.kicker}>EVERY WARRIOR STARTS SOMEWHERE.</p>
+          <p className={styles.kicker}>ÇDO LUFTETAR NIS DIKU.</p>
           <div className={styles.contentRequired}>
-            <span>MENTOR&apos;S JOURNEY</span>
-            <strong>[CONTENT REQUIRED]</strong>
-            <p>The actual mentor story, imagery and video will be inserted here. No story has been invented.</p>
+            <span>RRUGËTIMI I MENTORIT</span><strong>[PËRMBAJTJA KËRKOHET]</strong>
+            <p>Këtu do të vendoset historia, fotografia ose videoja reale e mentorit. Asnjë histori nuk është improvizuar.</p>
           </div>
-          <div className={styles.chapterRail} aria-label="Mentor journey progress">
-            {mentorChapters.map((chapter, index) => (
-              <span key={chapter[1]} data-active={index <= mentorChapter} />
-            ))}
+          <div className={styles.chapterRail} aria-label="Progresi i rrugëtimit të mentorit">
+            {mentorChapters.map((chapter, index) => <span key={chapter[1]} data-active={index <= mentorChapter} />)}
           </div>
-          <button
-            className={styles.primary}
-            onClick={() => {
-              if (mentorChapter < mentorChapters.length - 1) setMentorChapter((value) => value + 1);
-              else dispatch({ type: "COMPLETE_MENTOR" });
-            }}
-          >
-            {mentorChapter < mentorChapters.length - 1 ? "CONTINUE THE JOURNEY" : "UNDERSTAND THE RULE"}
+          <button className={styles.primary} onClick={() => {
+            if (mentorChapter < mentorChapters.length - 1) setMentorChapter((value) => value + 1);
+            else dispatch({ type: "COMPLETE_MENTOR" });
+          }}>
+            {mentorChapter < mentorChapters.length - 1 ? "VAZHDO RRUGËTIMIN" : "KUPTO RREGULLIN"} <span>→</span>
           </button>
         </SceneFrame>
       )}
 
       {state.phase === "rule" && (
-        <SceneFrame eyebrow="THE LD RULE" title={'At LD, “no” does not exist.'}>
-          <p className={styles.ruleCopy}>When the mission becomes difficult, you do not immediately escape it. You look for a way forward.</p>
-          <p className={styles.ruleStatement}>FOR 21 DAYS, YOU CHOOSE DISCIPLINE OVER EXCUSES.</p>
-          <p className={styles.safety}>Safety, health and personal boundaries remain valid. This principle removes unnecessary excuses—not reasonable boundaries.</p>
-          <button className={styles.primary} onClick={() => dispatch({ type: "ACCEPT_RULE" })}>I UNDERSTAND</button>
+        <SceneFrame eyebrow="RREGULLI I LD-SË" title={'Në LD, “nuk mundem” nuk është fundi.'}>
+          <p className={styles.ruleCopy}>Kur misioni bëhet i vështirë, nuk ikën menjëherë. Ndal, vlerëso dhe kërko rrugën përpara.</p>
+          <p className={styles.ruleStatement}>PËR 21 DITË, ZGJEDH DISIPLINËN PARA ARSYETIMEVE.</p>
+          <p className={styles.safety}>Siguria, shëndeti dhe kufijtë personalë mbeten të vlefshëm. Ky standard largon arsyetimet e panevojshme, jo kufijtë e arsyeshëm.</p>
+          <button className={styles.primary} onClick={() => dispatch({ type: "ACCEPT_RULE" })}>E KUPTOJ <span>→</span></button>
         </SceneFrame>
       )}
 
       {state.phase === "readiness" && (
-        <SceneFrame eyebrow={`QUESTION 0${state.readinessStep + 1} · 04`} title={`${state.member.firstName.toUpperCase()}, ARE YOU READY?`}>
+        <SceneFrame eyebrow={`PYETJA 0${state.readinessStep + 1} · 04`} title={`${state.member.firstName.toUpperCase()}, A JE GATI?`}>
           <p className={styles.readinessQuestion}>{readinessQuestions[state.readinessStep]}</p>
-          <button className={styles.decision} onClick={() => dispatch({ type: "CONFIRM_READINESS" })}>I AM</button>
+          <button className={styles.decision} onClick={() => dispatch({ type: "CONFIRM_READINESS" })}>PO, JAM <span>→</span></button>
         </SceneFrame>
       )}
 
       {state.phase === "final-readiness" && (
-        <SceneFrame eyebrow="THE DECISION" title="Are you ready to become a Luftetar Digjital?">
-          <button className={styles.decision} onClick={() => dispatch({ type: "ACCEPT_FINAL_READINESS" })}>I&apos;M READY</button>
+        <SceneFrame eyebrow="VENDIMI" title="A je gati të bëhesh Luftetar Digjital?">
+          <button className={styles.decision} onClick={() => dispatch({ type: "ACCEPT_FINAL_READINESS" })}>JAM GATI <span>→</span></button>
         </SceneFrame>
       )}
 
       {state.phase === "commitment" && (
-        <SceneFrame eyebrow="YOUR WORD · 21 DAYS" title="The 21-Day Commitment">
+        <SceneFrame eyebrow="FJALA JOTE · 21 DITË" title="Zotimi 21-Ditor">
           <div className={styles.documentShell}>
-            <div
-              className={styles.document}
-              onScroll={(event) => {
-                const element = event.currentTarget;
-                const max = element.scrollHeight - element.clientHeight;
-                const progress = max <= 0 ? 100 : Math.round((element.scrollTop / max) * 100);
-                setReadProgress(Math.min(100, progress));
-              }}
-            >
-              <h2>THE 21-DAY COMMITMENT</h2>
-              <p>I, <strong>{state.member.fullName}</strong>, choose to enter the next 21 days willingly.</p>
+            <div className={styles.document} onScroll={(event) => {
+              const element = event.currentTarget;
+              const max = element.scrollHeight - element.clientHeight;
+              const progress = max <= 0 ? 100 : Math.round((element.scrollTop / max) * 100);
+              setReadProgress(Math.min(100, progress));
+            }}>
+              <h2>ZOTIMI 21-DITOR</h2>
+              <p>Unë, <strong>{state.member.fullName}</strong>, zgjedh të hyj vullnetarisht në 21 ditët e ardhshme.</p>
               {commitmentLines.map((line) => <p key={line}>{line}</p>)}
-              <div className={styles.documentEnd}>END OF COMMITMENT</div>
+              <div className={styles.documentEnd}>FUNDI I ZOTIMIT</div>
             </div>
-            <div className={styles.readingProgress}>
-              <span>READING COMMITMENT</span>
-              <div><i style={{ width: `${readProgress}%` }} /></div>
-              <strong>{readProgress}%</strong>
-            </div>
+            <div className={styles.readingProgress}><span>LEXIMI I ZOTIMIT</span><div><i style={{ width: `${readProgress}%` }} /></div><strong>{readProgress}%</strong></div>
           </div>
-          <button
-            className={styles.primary}
-            disabled={readProgress < 98}
-            onClick={() => dispatch({ type: "MARK_COMMITMENT_READ" })}
-          >
-            {readProgress >= 98 ? "COMMITMENT READ" : "READ TO THE END"}
+          <button className={styles.primary} disabled={readProgress < 98} onClick={() => dispatch({ type: "MARK_COMMITMENT_READ" })}>
+            {readProgress >= 98 ? "E LEXOVA ZOTIMIN" : "LEXO DERI NË FUND"}
           </button>
         </SceneFrame>
       )}
 
       {state.phase === "signature" && (
-        <SceneFrame eyebrow="COMMITMENT READ" title="Your word means something.">
-          <p className={styles.lead}>Sign below only if you are ready to honor the commitment you just made.</p>
+        <SceneFrame eyebrow="ZOTIMI U LEXUA" title="Fjala jote ka peshë.">
+          <p className={styles.lead}>Nënshkruaj vetëm nëse je gati ta respektosh zotimin që sapo bëre.</p>
           <div className={styles.signatureShell}>
             <svg
               ref={signatureRef}
               className={styles.signaturePad}
               viewBox="0 0 600 220"
               role="img"
-              aria-label="Draw your signature"
+              aria-label="Vizato nënshkrimin tënd"
               onPointerDown={startSignature}
               onPointerMove={drawSignature}
               onPointerUp={finishSignature}
               onPointerCancel={finishSignature}
             >
               <path d={signaturePath} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              {!signaturePath && <text x="300" y="112" textAnchor="middle">Draw your signature</text>}
+              {!signaturePath && <text x="300" y="112" textAnchor="middle">Vizato nënshkrimin këtu</text>}
             </svg>
-            <span>Signature of {state.member.fullName}</span>
+            <span>Nënshkrimi i {state.member.fullName}</span>
           </div>
           <div className={styles.actions}>
-            <button className={styles.secondary} onClick={() => { setSignaturePath(""); setDrawing(false); }}>CLEAR</button>
-            <button
-              className={styles.primary}
-              disabled={!state.signatureCreated}
-              onClick={() => dispatch({ type: "SEAL_COMMITMENT" })}
-            >
-              SEAL MY COMMITMENT
-            </button>
+            <button className={styles.secondary} onClick={() => { setSignaturePath(""); setDrawing(false); }}>PASTRO</button>
+            <button className={styles.primary} disabled={!state.signatureCreated} onClick={() => dispatch({ type: "SEAL_COMMITMENT" })}>VULO ZOTIMIN TIM</button>
           </div>
         </SceneFrame>
       )}
 
       {state.phase === "seal" && (
-        <SceneFrame eyebrow="COMMITMENT ACCEPTED" title={state.member.fullName}>
-          <div className={styles.seal} aria-label="Luftetari Digjital 21-Day Challenge committed seal">
-            <span>LUFTETARI DIGJITAL</span><strong>LD</strong><span>21-DAY · COMMITTED</span>
-          </div>
-          <p className={styles.lead}>Your signature is sealed. Your word now has a beginning.</p>
+        <SceneFrame eyebrow="ZOTIMI U PRANUA" title={state.member.fullName}>
+          <div className={styles.seal} aria-label="Vula e zotimit Luftetari Digjital"><span>LUFTETARI DIGJITAL</span><strong>LD</strong><span>21 DITË · I ZOTUAR</span></div>
+          <p className={styles.lead}>Nënshkrimi yt u vulos. Fjala jote tani ka një fillim.</p>
         </SceneFrame>
       )}
 
       {state.phase === "member" && (
-        <SceneFrame eyebrow="INITIATION RECOGNIZED" title="You entered something.">
+        <SceneFrame eyebrow="INICIMI U KONFIRMUA" title="Tani je pjesë e rrugëtimit.">
           <div className={styles.memberCard}>
-            <span>LUFTETARI DIGJITAL</span>
-            <small>21-DAY CHALLENGE</small>
-            <strong>{state.member.fullName}</strong>
-            <code>{state.member.memberId}</code>
-            <b>DAY 0 / 21</b>
+            <Image src="/ld-logo.png" alt="" width={72} height={72} />
+            <span>LUFTETARI DIGJITAL</span><small>SFIDA 21-DITORE</small><strong>{state.member.fullName}</strong><code>{state.member.memberId}</code><b>DITA 0 / 21</b>
           </div>
-          <button className={styles.primary} onClick={() => dispatch({ type: "ADVANCE" })}>RECEIVE YOUR JOURNEY</button>
+          <button className={styles.primary} onClick={() => dispatch({ type: "ADVANCE" })}>SHIKO RRUGËTIMIN <span>→</span></button>
         </SceneFrame>
       )}
 
       {state.phase === "day-zero" && (
-        <SceneFrame eyebrow="DAY 0 · INITIATION COMPLETE" title="Your old routine ends here.">
-          <div className={styles.journeyTrack} aria-label="Day 0 of 21 complete">
-            <span className={styles.activeDay}>00</span>
-            {Array.from({ length: 21 }, (_, index) => <i key={index} />)}
-            <span>21</span>
-          </div>
-          <p className={styles.dayOne}>DAY 1 BEGINS NOW.</p>
-          <button className={styles.decision} onClick={() => dispatch({ type: "ENTER_DAY_ONE" })}>ENTER DAY 1 →</button>
+        <SceneFrame eyebrow="DITA 0 · INICIMI U PËRFUNDUA" title="Rutina jote e vjetër përfundon këtu.">
+          <div className={styles.journeyTrack} aria-label="Dita 0 nga 21"><span className={styles.activeDay}>00</span>{Array.from({ length: 21 }, (_, index) => <i key={index} />)}<span>21</span></div>
+          <p className={styles.dayOne}>DITA 1 FILLON TANI.</p>
+          <button className={styles.decision} onClick={() => dispatch({ type: "ENTER_DAY_ONE" })}>HYR NË DITËN 1 <span>→</span></button>
         </SceneFrame>
       )}
 
       {state.phase === "day-one" && (
-        <SceneFrame eyebrow="DAY 1 · THE BEGINNING" title={`Welcome, ${state.member.firstName}.`}>
-          <div className={styles.contentRequired}>
-            <span>DAY 1 EXPERIENCE</span>
-            <strong>[CONTENT REQUIRED]</strong>
-            <p>The first mission will connect here when Day 1 content and backend delivery are approved.</p>
-          </div>
+        <SceneFrame eyebrow="DITA 1 · FILLIMI" title={`Mirë se erdhe, ${state.member.firstName}.`}>
+          <div className={styles.contentRequired}><span>EKSPERIENCA E DITËS 1</span><strong>[PËRMBAJTJA KËRKOHET]</strong><p>Misioni i parë lidhet këtu pasi të aprovohen përmbajtja e Ditës 1 dhe sistemi teknik.</p></div>
         </SceneFrame>
       )}
+
+      <PillarRail />
     </main>
   );
 }

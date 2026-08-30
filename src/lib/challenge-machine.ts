@@ -2,7 +2,6 @@ export const PROTOTYPE_REDEEM_CODE = "LD2026";
 
 export type ChallengePhase =
   | "arrival"
-  | "sound"
   | "identity"
   | "redeem"
   | "recognition"
@@ -50,8 +49,6 @@ export type ChallengeState = {
 export type ChallengeAction =
   | { type: "RESTORE"; state: ChallengeState }
   | { type: "BEGIN" }
-  | { type: "CHOOSE_SOUND"; enabled: boolean }
-  | { type: "TOGGLE_SOUND" }
   | { type: "SET_IDENTITY"; firstName: string; lastName: string }
   | { type: "SUBMIT_CODE"; code: string }
   | { type: "ADVANCE" }
@@ -117,13 +114,7 @@ export function advanceChallenge(
     case "RESTORE":
       return action.state;
     case "BEGIN":
-      return state.phase === "arrival" ? { ...state, phase: "sound" } : state;
-    case "CHOOSE_SOUND":
-      return state.phase === "sound"
-        ? { ...state, phase: "identity", soundEnabled: action.enabled }
-        : state;
-    case "TOGGLE_SOUND":
-      return { ...state, soundEnabled: !state.soundEnabled };
+      return state.phase === "arrival" ? { ...state, phase: "identity" } : state;
     case "SET_IDENTITY": {
       if (state.phase !== "identity") return state;
       const firstName = action.firstName.trim();
@@ -146,13 +137,14 @@ export function advanceChallenge(
         return {
           ...state,
           redeemAttempts: state.redeemAttempts + 1,
-          feedback: "The code did not unlock the chest.",
+          feedback: "Kodi nuk e hapi portën.",
         };
       }
       return {
         ...state,
         phase: "recognition",
         redeemCodeValidated: true,
+        soundEnabled: true,
         feedback: null,
       };
     }

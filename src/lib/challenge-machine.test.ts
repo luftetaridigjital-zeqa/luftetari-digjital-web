@@ -13,11 +13,8 @@ describe("21-Day Challenge initiation machine", () => {
     expect(state.phase).toBe("arrival");
 
     state = advanceChallenge(state, { type: "BEGIN" });
-    expect(state.phase).toBe("sound");
-
-    state = advanceChallenge(state, { type: "CHOOSE_SOUND", enabled: true });
     expect(state.phase).toBe("identity");
-    expect(state.soundEnabled).toBe(true);
+    expect(state.soundEnabled).toBe(false);
 
     state = advanceChallenge(state, {
       type: "SET_IDENTITY",
@@ -45,7 +42,7 @@ describe("21-Day Challenge initiation machine", () => {
 
     expect(next.phase).toBe("redeem");
     expect(next.redeemAttempts).toBe(1);
-    expect(next.feedback).toBe("The code did not unlock the chest.");
+    expect(next.feedback).toBe("Kodi nuk e hapi portën.");
   });
 
   it("accepts the prototype code and advances through the unlock sequence", () => {
@@ -59,6 +56,7 @@ describe("21-Day Challenge initiation machine", () => {
       code: "ld-2026",
     });
     expect(state.phase).toBe("recognition");
+    expect(state.soundEnabled).toBe(true);
 
     const expected = [
       "key-activation",
@@ -109,16 +107,6 @@ describe("21-Day Challenge initiation machine", () => {
     const sealed = advanceChallenge(signed, { type: "SEAL_COMMITMENT" });
     expect(sealed.phase).toBe("seal");
     expect(sealed.commitmentSealed).toBe(true);
-  });
-
-  it("toggles sound without changing the active scene", () => {
-    const state: ChallengeState = {
-      ...createChallengeState(),
-      phase: "redeem",
-    };
-    const next = advanceChallenge(state, { type: "TOGGLE_SOUND" });
-    expect(next.phase).toBe("redeem");
-    expect(next.soundEnabled).toBe(true);
   });
 
   it("restores persisted non-secret initiation progress", () => {
